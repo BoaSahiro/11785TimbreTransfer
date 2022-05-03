@@ -2,7 +2,9 @@ from model_vc import Generator
 import torch
 import torch.nn.functional as F
 import time
+import os
 import datetime
+from torch.utils.tensorboard import SummaryWriter
 
 
 class Solver(object):
@@ -28,6 +30,9 @@ class Solver(object):
         self.use_cuda = torch.cuda.is_available()
         self.device = torch.device('cuda:0' if self.use_cuda else 'cpu')
         self.log_step = config.log_step
+        self.save_step = config.save_step
+        self.save_dir = config.save_dir
+        self.summary_writer = None
 
         # Build the model and tensorboard.
         self.build_model()
@@ -40,6 +45,14 @@ class Solver(object):
         self.g_optimizer = torch.optim.Adam(self.G.parameters(), 0.0001)
         
         self.G.to(self.device)
+
+        # load previous model
+        cp_path = os.path.join(self.save_dir, "weights")
+        if os.path.exists(cp_path):
+            save_info = torch.load(cp_path)
+            self.G.load_state_dict(save_info["model"])
+            self.g_optimizer.load_state_dict(save_info["optimizer"])
+            self.g_optimizer.state_dict()['param_groups'][0]['lr'] /= 2
         
 
     def reset_grad(self):
@@ -61,6 +74,9 @@ class Solver(object):
         # Start training.
         print('Start training...')
         start_time = time.time()
+
+        scaler = torch.cuda.amp.GradScaler()  # FP 16
+
         for i in range(self.num_iters):
 
             # =================================================================================== #
@@ -87,8 +103,10 @@ class Solver(object):
                         
             # Identity mapping loss
             x_identic, x_identic_psnt, code_real = self.G(x_real, emb_org, emb_org)
-            g_loss_id = F.mse_loss(x_real, x_identic)   
-            g_loss_id_psnt = F.mse_loss(x_real, x_identic_psnt)   
+            # g_loss_id = F.mse_loss(x_real, x_identic)   
+            # g_loss_id_psnt = F.mse_loss(x_real, x_identic_psnt)
+            g_loss_id = F.l1_loss(x_real, x_identic)   
+            g_loss_id_psnt = F.l1_loss(x_real, x_identic_psnt)
             
             # Code semantic loss.
             code_reconst = self.G(x_identic_psnt, emb_org, None)
@@ -98,8 +116,14 @@ class Solver(object):
             # Backward and optimize.
             g_loss = g_loss_id + g_loss_id_psnt + self.lambda_cd * g_loss_cd
             self.reset_grad()
-            g_loss.backward()
-            self.g_optimizer.step()
+
+            # This is a replacement for loss.backward()
+            scaler.scale(g_loss).backward()
+            # This is a replacement for optimizer.step()
+            scaler.step(self.g_optimizer)
+            scaler.update()  # This is something added just for FP16
+            # g_loss.backward()
+            # self.g_optimizer.step()
 
             # Logging.
             loss = {}
@@ -119,7 +143,28 @@ class Solver(object):
                 for tag in keys:
                     log += ", {}: {:.4f}".format(tag, loss[tag])
                 print(log)
-                
+                self._write_summary(i, g_loss, loss['G/loss_id'], loss['G/loss_id_psnt'], loss['G/loss_cd'])
+
+            # save model checkpoint
+            if i % self.save_step == 1:
+                save_info = {
+                    "iteration": i,
+                    "model": self.G.state_dict(),
+                    "optimizer": self.g_optimizer.state_dict()
+                }
+                save_name = "weights"
+                save_path = os.path.join(self.save_dir, save_name)
+                torch.save(save_info, save_path)
+
+    def _write_summary(self, i, loss, loss_id, loss_id_psnt, loss_cd):
+        writer = self.summary_writer or SummaryWriter(self.save_dir, purge_step=i)
+        writer.add_scalar('train/loss_all', loss, i)
+        writer.add_scalar('train/loss_id', loss_id, i)
+        writer.add_scalar('train/loss_id_psnt', loss_id_psnt, i)
+        writer.add_scalar('train/loss_cd', loss_cd, i)
+        writer.flush()
+
+        self.summary_writer = writer
 
     
     

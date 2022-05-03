@@ -10,54 +10,46 @@ from multiprocessing import Process, Manager
 class Utterances(data.Dataset):
     """Dataset class for the Utterances dataset."""
 
-    def __init__(self, root_dir, len_crop):
+    def __init__(self, root_dir, emb_dir, len_crop):
         """Initialize and preprocess the Utterances dataset."""
         self.root_dir = root_dir
+        self.emb_dir = emb_dir
         self.len_crop = len_crop
         self.step = 10
-        
-        metaname = os.path.join(self.root_dir, "train.pkl")
-        meta = pickle.load(open(metaname, "rb"))
-        
-        """Load data using multiprocessing"""
-        manager = Manager()
-        meta = manager.list(meta)
-        dataset = manager.list(len(meta)*[None])  
-        processes = []
-        for i in range(0, len(meta), self.step):
-            p = Process(target=self.load_data, 
-                        args=(meta[i:i+self.step],dataset,i))  
-            p.start()
-            processes.append(p)
-        for p in processes:
-            p.join()
-            
-        self.train_dataset = list(dataset)
-        self.num_tokens = len(self.train_dataset)
-        
-        print('Finished loading the dataset...')
-        
-        
-    def load_data(self, submeta, dataset, idx_offset):  
-        for k, sbmt in enumerate(submeta):    
-            uttrs = len(sbmt)*[None]
-            for j, tmp in enumerate(sbmt):
-                if j < 2:  # fill in speaker id and embedding
-                    uttrs[j] = tmp
-                else: # load the mel-spectrograms
-                    uttrs[j] = np.load(os.path.join(self.root_dir, tmp))
-            dataset[idx_offset+k] = uttrs
+
+        # load embeddings
+        dataset = dict()
+        for filename in os.listdir(self.emb_dir):
+            if os.path.splitext(filename)[1] == '.npy':
+                filepath = os.path.join(self.emb_dir, filename)
+                ins_name = filename.split('_')[0]
+                ins_emb = np.load(filepath)
+                # ins_emb = np.reshape(ins_emb, (-1))
+                ins_emb = ins_emb[10]
+                dataset[ins_name] = [ins_emb]
+        # load spectrograms
+        for filename in os.listdir(self.root_dir):
+            if os.path.splitext(filename)[1] == '.npy':
+                filepath = os.path.join(self.root_dir, filename)
+                ins_name = filename.split('_')[0]
+                dataset[ins_name].append(np.load(filepath))
+
+        self.train_dataset = dataset
+
+        self.num_tokens = len(list(self.train_dataset.keys()))
                    
         
     def __getitem__(self, index):
-        # pick a random speaker
-        dataset = self.train_dataset 
-        list_uttrs = dataset[index]
-        emb_org = list_uttrs[1]
+        # pick a random instrument
+        dataset = self.train_dataset
+
+        list_ins = list(dataset.keys())
+        list_uttrs = dataset[list_ins[index]]
+        emb_org = list_uttrs[0]
         
         # pick random uttr with random crop
-        a = np.random.randint(2, len(list_uttrs))
-        tmp = list_uttrs[a]
+        a = np.random.randint(1, len(list_uttrs))
+        tmp = list_uttrs[a].T
         if tmp.shape[0] < self.len_crop:
             len_pad = self.len_crop - tmp.shape[0]
             uttr = np.pad(tmp, ((0,len_pad),(0,0)), 'constant')
@@ -77,10 +69,10 @@ class Utterances(data.Dataset):
     
     
 
-def get_loader(root_dir, batch_size=16, len_crop=128, num_workers=0):
+def get_loader(root_dir, emb_dir, batch_size=16, len_crop=128, num_workers=0):
     """Build and return a data loader."""
     
-    dataset = Utterances(root_dir, len_crop)
+    dataset = Utterances(root_dir, emb_dir, len_crop)
     
     worker_init_fn = lambda x: np.random.seed((torch.initial_seed()) % (2**32))
     data_loader = data.DataLoader(dataset=dataset,

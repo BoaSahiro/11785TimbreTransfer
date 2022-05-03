@@ -34,7 +34,7 @@ config = {
     'use_phase': False, # only True without mel
     'is_multi': False, # if true, there would be three resolutions
     'use_ceps': True,
-    'use_d_spec': False,
+    'use_d_spec': True,
     'd_spec_type': 'attack', # mode: all, decay, or attack
     'use_spec_enve': False,
     
