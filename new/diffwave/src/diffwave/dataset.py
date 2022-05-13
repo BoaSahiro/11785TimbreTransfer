@@ -35,7 +35,7 @@ class ConditionalDataset(torch.utils.data.Dataset):
     for audio_filename in self.filenames:
       signal, _ = torchaudio.load(audio_filename)
       self.audio_signals.append(signal)
-      spec_filename = f'{audio_filename}.spec.npy'
+      spec_filename = f'{audio_filename}_cqt.npy'
       spectrogram = np.load(spec_filename)
       self.spectrograms.append(spectrogram)
 
@@ -54,7 +54,9 @@ class ConditionalDataset(torch.utils.data.Dataset):
     spectrogram = self.spectrograms[idx]
     # https://github.com/lmnt-com/diffwave/issues/15
     out = signal[0]
+    # print(out.shape)
     # if torchaudio.__version__ > '0.7.0' else signal[0] / 32767.5
+    # print(torch.max(out), torch.min(out))
     return {
         'audio': out,
         'spectrogram': spectrogram.T

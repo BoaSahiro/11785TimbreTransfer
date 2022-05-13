@@ -42,7 +42,7 @@ class ConvNorm(torch.nn.Module):
 class Encoder(nn.Module):
     """Encoder module:
     """
-    def __init__(self, dim_neck, dim_emb, freq):
+    def __init__(self, dim_neck, dim_emb, dim_pre, freq):
         super(Encoder, self).__init__()
         self.dim_neck = dim_neck
         self.freq = freq
@@ -50,16 +50,16 @@ class Encoder(nn.Module):
         convolutions = []
         for i in range(3):
             conv_layer = nn.Sequential(
-                ConvNorm(80+dim_emb if i==0 else 512,
-                         512,
+                ConvNorm(84+dim_emb if i==0 else dim_pre,
+                         dim_pre,
                          kernel_size=5, stride=1,
                          padding=2,
                          dilation=1, w_init_gain='relu'),
-                nn.BatchNorm1d(512))
+                nn.BatchNorm1d(dim_pre))
             convolutions.append(conv_layer)
         self.convolutions = nn.ModuleList(convolutions)
         
-        self.lstm = nn.LSTM(512, dim_neck, 2, batch_first=True, bidirectional=True)
+        self.lstm = nn.LSTM(dim_pre, dim_neck, 2, batch_first=True, bidirectional=True)
 
     def forward(self, x, c_org):
         x = x.squeeze(1).transpose(2,1)
@@ -106,7 +106,7 @@ class Decoder(nn.Module):
         
         self.lstm2 = nn.LSTM(dim_pre, 1024, 2, batch_first=True)
         
-        self.linear_projection = LinearNorm(1024, 80)
+        self.linear_projection = LinearNorm(1024, 84)
 
     def forward(self, x):
         
@@ -136,7 +136,7 @@ class Postnet(nn.Module):
 
         self.convolutions.append(
             nn.Sequential(
-                ConvNorm(80, 512,
+                ConvNorm(84, 512,
                          kernel_size=5, stride=1,
                          padding=2,
                          dilation=1, w_init_gain='tanh'),
@@ -156,11 +156,11 @@ class Postnet(nn.Module):
 
         self.convolutions.append(
             nn.Sequential(
-                ConvNorm(512, 80,
+                ConvNorm(512, 84,
                          kernel_size=5, stride=1,
                          padding=2,
                          dilation=1, w_init_gain='linear'),
-                nn.BatchNorm1d(80))
+                nn.BatchNorm1d(84))
             )
 
     def forward(self, x):
@@ -177,7 +177,7 @@ class Generator(nn.Module):
     def __init__(self, dim_neck, dim_emb, dim_pre, freq):
         super(Generator, self).__init__()
         
-        self.encoder = Encoder(dim_neck, dim_emb, freq)
+        self.encoder = Encoder(dim_neck, dim_emb, dim_pre, freq)
         self.decoder = Decoder(dim_neck, dim_emb, dim_pre)
         self.postnet = Postnet()
 

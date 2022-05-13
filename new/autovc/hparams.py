@@ -63,7 +63,7 @@ hparams = Map({
 	'sample_rate': 16000,
 	# this is only valid for mulaw is True
 	'silence_threshold': 2,
-	'num_mels': 80,
+	'num_mels': 84,
 	'fmin': 125,
 	'fmax': 7600,
 	'fft_size': 1024,

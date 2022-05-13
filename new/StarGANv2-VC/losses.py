@@ -86,7 +86,7 @@ def compute_g_loss(nets, args, x_real, y_org, y_trg, z_trgs=None, x_refs=None, u
     # compute ASR/F0 features (real)
     with torch.no_grad():
         F0_real, GAN_F0_real, cyc_F0_real = nets.f0_model(x_real)
-        ASR_real = nets.asr_model.get_feature(x_real)
+        # ASR_real = nets.asr_model.get_feature(x_real)
     
     # adversarial loss
     x_fake = nets.generator(x_real, s_trg, masks=None, F0=GAN_F0_real)
@@ -95,7 +95,7 @@ def compute_g_loss(nets, args, x_real, y_org, y_trg, z_trgs=None, x_refs=None, u
     
     # compute ASR/F0 features (fake)
     F0_fake, GAN_F0_fake, _ = nets.f0_model(x_fake)
-    ASR_fake = nets.asr_model.get_feature(x_fake)
+    # ASR_fake = nets.asr_model.get_feature(x_fake)
     
     # norm consistency loss
     x_fake_norm = log_norm(x_fake)
@@ -113,7 +113,7 @@ def compute_g_loss(nets, args, x_real, y_org, y_trg, z_trgs=None, x_refs=None, u
         loss_f0_sty = torch.zeros(1).mean()
     
     # ASR loss
-    loss_asr = F.smooth_l1_loss(ASR_fake, ASR_real)
+    # loss_asr = F.smooth_l1_loss(ASR_fake, ASR_real)
     
     # style reconstruction loss
     s_pred = nets.style_encoder(x_fake, y_trg)
@@ -152,18 +152,19 @@ def compute_g_loss(nets, args, x_real, y_org, y_trg, z_trgs=None, x_refs=None, u
     loss = args.lambda_adv * loss_adv + args.lambda_sty * loss_sty \
            - args.lambda_ds * loss_ds + args.lambda_cyc * loss_cyc\
            + args.lambda_norm * loss_norm \
-           + args.lambda_asr * loss_asr \
-           + args.lambda_f0 * loss_f0 \
-           + args.lambda_f0_sty * loss_f0_sty \
-           + args.lambda_adv_cls * loss_adv_cls
+            + args.lambda_adv_cls * loss_adv_cls
+        #    + args.lambda_asr * loss_asr \
+        #    + args.lambda_f0 * loss_f0 \
+        #    + args.lambda_f0_sty * loss_f0_sty \
+           
 
     return loss, Munch(adv=loss_adv.item(),
                        sty=loss_sty.item(),
                        ds=loss_ds.item(),
                        cyc=loss_cyc.item(),
                        norm=loss_norm.item(),
-                       asr=loss_asr.item(),
-                       f0=loss_f0.item(),
+                    #    asr=loss_asr.item(),
+                    #    f0=loss_f0.item(),
                        adv_cls=loss_adv_cls.item())
     
 # for norm consistency loss

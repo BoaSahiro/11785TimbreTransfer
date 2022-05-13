@@ -40,8 +40,10 @@ def predict(spectrogram=None, model_dir=None, params=None, device=torch.device('
   # Lazy load model.
   if not model_dir in models:
     if os.path.exists(f'{model_dir}/weights.pt'):
+      print("hey")
       checkpoint = torch.load(f'{model_dir}/weights.pt')
     else:
+      print("haa")
       checkpoint = torch.load(model_dir)
     model = DiffWave(AttrDict(base_params)).to(device)
     try:
@@ -106,7 +108,10 @@ def predict(spectrogram=None, model_dir=None, params=None, device=torch.device('
 
 def main(args):
   if args.spectrogram_path:
-    spectrogram = torch.from_numpy(np.load(args.spectrogram_path))
+    if args.log == '1':
+      spectrogram = torch.from_numpy(np.exp(np.load(args.spectrogram_path)))
+    else:
+      spectrogram = torch.from_numpy(np.load(args.spectrogram_path))
   else:
     spectrogram = None
   audio, sr = predict(spectrogram, model_dir=args.model_dir, fast_sampling=args.fast, params=base_params)
@@ -123,4 +128,5 @@ if __name__ == '__main__':
       help='output file name')
   parser.add_argument('--fast', '-f', action='store_true',
       help='fast sampling procedure')
+  parser.add_argument('--log', '-l', default='1')
   main(parser.parse_args())

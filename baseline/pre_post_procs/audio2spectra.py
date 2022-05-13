@@ -9,32 +9,32 @@ from utils import mkdir, read_via_scipy, get_spectrogram, get_cepstrogram, get_d
 ### settings
 config = {
     # basic parameters
-    'sr': 22050,
-    'n_fft': 2048,
+    'sr': 16000,
+    'n_fft': 1024,
     'hop_length': 256,
     'input_type': 'exp', # power, dB with ref_dB, p_log, exp with exp_b. it's input of training data
     'is_mel': True,
     
     # for spectra
-    'n_mels': 256,
+    'n_mels': 80,
     'exp_b': 0.3,
     'ref_dB': 1e-5,
     
     # for cepstrum
-    'dct_type': 2,
+    'dct_type': 2, 
     'norm': 'ortho',
     
     # for slicing and overlapping
-    'audio_samples_frame_size': 77175, # 3.5sec * sr
-    'audio_samples_hop_length': 77175,
-    'output_hei': 256,
-    'output_wid': 302, # num_output_frames = 1 + (77175/hop_length256)
+    'audio_samples_frame_size': 56000, # 3.5sec * sr
+    'audio_samples_hop_length': 56000,
+    'output_hei': 80,
+    'output_wid': 219, # num_output_frames = 1 + (77175/hop_length256)
     
     # to decide number of channels
     'use_phase': False, # only True without mel
     'is_multi': False, # if true, there would be three resolutions
     'use_ceps': True,
-    'use_d_spec': True,
+    'use_d_spec': False,
     'd_spec_type': 'attack', # mode: all, decay, or attack
     'use_spec_enve': False,
     
@@ -128,9 +128,9 @@ def audio2npys(input_file, config):
 '''
 locate the input directory & read the files
 '''
-inpath = './raw_audios/raw_audio_'
-instrument = 'guitar'
-prefix = '_c2h256w302' # naming follows the settings in config
+inpath = '/content/drive/MyDrive/Colab Notebooks/timbre/data_synth/piano_all.wav'
+instrument = 'piano'
+prefix = '_c4h256w219_piano' # naming follows the settings in config
 
 specpath = prefix+'_'+instrument+'/npy'+'/'
 imgpath = prefix+'_'+instrument+'/img'+'/'

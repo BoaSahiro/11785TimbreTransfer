@@ -27,7 +27,7 @@ SPECT_PARAMS = {
     "hop_length": 256
 }
 MEL_PARAMS = {
-    "n_mels": 80,
+    "n_mels": 84,
     "n_fft": 1024,
     "win_length": 1024,
     "hop_length": 256
@@ -71,18 +71,20 @@ class MelDataset(torch.utils.data.Dataset):
         wav_path, label = path
         label = int(label)
 
-        mel_data = np.load(wav_path+".spec.npy")
+        mel_data = np.load(wav_path+"_cqt.npy")
         
         if not self.validation: # random scale for robustness
             random_scale = 0.8 + 0.2 * np.random.random()
             mel_data = random_scale * mel_data
 
-        mel_data = mel_data ** 2
+        # # log representation
+        # mel_data = np.log(mel_data) + 1e-8
+        # mel_data = mel_data ** 2
 
         mel_tensor = torch.from_numpy(mel_data)
 
         # mel_tensor = self.to_melspec(wave_tensor)
-        mel_tensor = (torch.log(1e-5 + mel_tensor) - self.mean) / self.std
+        mel_tensor = (torch.log(1e-8 + mel_tensor) - self.mean) / self.std
         mel_length = mel_tensor.size(1)
         if mel_length > self.max_mel_length:
             random_start = np.random.randint(0, mel_length - self.max_mel_length)

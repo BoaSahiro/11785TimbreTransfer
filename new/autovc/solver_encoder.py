@@ -42,17 +42,17 @@ class Solver(object):
         
         self.G = Generator(self.dim_neck, self.dim_emb, self.dim_pre, self.freq)        
         
-        self.g_optimizer = torch.optim.Adam(self.G.parameters(), 0.0001)
+        self.g_optimizer = torch.optim.Adam(self.G.parameters(), 1e-4)
         
         self.G.to(self.device)
 
         # load previous model
-        cp_path = os.path.join(self.save_dir, "weights")
+        cp_path = os.path.join(self.save_dir, "weights_log_cqt_down8_neck16")
         if os.path.exists(cp_path):
             save_info = torch.load(cp_path)
             self.G.load_state_dict(save_info["model"])
-            self.g_optimizer.load_state_dict(save_info["optimizer"])
-            self.g_optimizer.state_dict()['param_groups'][0]['lr'] /= 2
+            # self.g_optimizer.load_state_dict(save_info["optimizer"])
+            # self.g_optimizer.state_dict()['param_groups'][0]['lr'] /= 2
         
 
     def reset_grad(self):
@@ -75,7 +75,7 @@ class Solver(object):
         print('Start training...')
         start_time = time.time()
 
-        scaler = torch.cuda.amp.GradScaler()  # FP 16
+        # scaler = torch.cuda.amp.GradScaler()  # FP 16
 
         for i in range(self.num_iters):
 
@@ -103,10 +103,16 @@ class Solver(object):
                         
             # Identity mapping loss
             x_identic, x_identic_psnt, code_real = self.G(x_real, emb_org, emb_org)
-            # g_loss_id = F.mse_loss(x_real, x_identic)   
-            # g_loss_id_psnt = F.mse_loss(x_real, x_identic_psnt)
-            g_loss_id = F.l1_loss(x_real, x_identic)   
+            x_identic = torch.squeeze(x_identic, dim=1)
+            x_identic_psnt = torch.squeeze(x_identic_psnt, dim=1)
+            g_loss_id = F.l1_loss(x_real, x_identic)
+            g_loss_norm = F.l1_loss(torch.sum(x_real, 2), torch.sum(x_identic, 2))
+            # g_loss_f0
+
+
             g_loss_id_psnt = F.l1_loss(x_real, x_identic_psnt)
+            # g_loss_id = F.l1_loss(x_real, x_identic)   
+            # g_loss_id_psnt = F.l1_loss(x_real, x_identic_psnt)
             
             # Code semantic loss.
             code_reconst = self.G(x_identic_psnt, emb_org, None)
@@ -118,12 +124,12 @@ class Solver(object):
             self.reset_grad()
 
             # This is a replacement for loss.backward()
-            scaler.scale(g_loss).backward()
+            # scaler.scale(g_loss).backward()
             # This is a replacement for optimizer.step()
-            scaler.step(self.g_optimizer)
-            scaler.update()  # This is something added just for FP16
-            # g_loss.backward()
-            # self.g_optimizer.step()
+            # scaler.step(self.g_optimizer)
+            # scaler.update()  # This is something added just for FP16
+            g_loss.backward()
+            self.g_optimizer.step()
 
             # Logging.
             loss = {}
@@ -152,7 +158,7 @@ class Solver(object):
                     "model": self.G.state_dict(),
                     "optimizer": self.g_optimizer.state_dict()
                 }
-                save_name = "weights"
+                save_name = "weights_log_cqt_down8_neck16"
                 save_path = os.path.join(self.save_dir, save_name)
                 torch.save(save_info, save_path)
 

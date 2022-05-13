@@ -16,6 +16,7 @@ class Utterances(data.Dataset):
         self.emb_dir = emb_dir
         self.len_crop = len_crop
         self.step = 10
+        self.eps = 1e-8
 
         # load embeddings
         dataset = dict()
@@ -32,7 +33,14 @@ class Utterances(data.Dataset):
             if os.path.splitext(filename)[1] == '.npy':
                 filepath = os.path.join(self.root_dir, filename)
                 ins_name = filename.split('_')[0]
-                dataset[ins_name].append(np.load(filepath))
+                # dataset[ins_name].append(np.load(filepath)**2) # try power spectrogram
+                # loaded = np.load(filepath) + self.eps
+                # maxi = np.max(loaded)
+                # mini = np.min(loaded)
+                # a = np.log(loaded)
+                dataset[ins_name].append(np.log(np.load(filepath)+self.eps)) # try log cqt
+                # dataset[ins_name].append(np.load(filepath)) # try linear cqt
+
 
         self.train_dataset = dataset
 
