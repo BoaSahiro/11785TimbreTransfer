@@ -38,6 +38,16 @@ class ConvNorm(torch.nn.Module):
         conv_signal = self.conv(signal)
         return conv_signal
 
+class Embedder(nn.Module):
+    def __init__(self, dim_emb):
+        super(Embedder, self).__init__()
+        self.dim_emb = dim_emb
+        # one-hot
+        self.emb = nn.Embedding(8, dim_emb)
+
+    def forward(self, onehot):# one-hot
+        return self.emb(onehot)
+
 
 class Encoder(nn.Module):
     """Encoder module:
@@ -63,7 +73,7 @@ class Encoder(nn.Module):
 
     def forward(self, x, c_org):
         x = x.squeeze(1).transpose(2,1)
-        # c_org = c_org1
+
         c_org = c_org.unsqueeze(-1).expand(-1, -1, x.size(-1))
 
         x = torch.cat((x, c_org), dim=1)
@@ -169,7 +179,7 @@ class Postnet(nn.Module):
 
         x = self.convolutions[-1](x)
 
-        return x    
+        return x
     
 
 class Generator(nn.Module):
@@ -177,11 +187,15 @@ class Generator(nn.Module):
     def __init__(self, dim_neck, dim_emb, dim_pre, freq):
         super(Generator, self).__init__()
         
+        self.embedder = Embedder(dim_emb)
         self.encoder = Encoder(dim_neck, dim_emb, dim_pre, freq)
         self.decoder = Decoder(dim_neck, dim_emb, dim_pre)
         self.postnet = Postnet()
 
     def forward(self, x, c_org, c_trg):
+        # one-hot
+        c_org = self.embedder(c_org)
+        
                 
         codes = self.encoder(x, c_org)
         if c_trg is None:
@@ -191,6 +205,9 @@ class Generator(nn.Module):
         for code in codes:
             tmp.append(code.unsqueeze(1).expand(-1,int(x.size(1)/len(codes)),-1))
         code_exp = torch.cat(tmp, dim=1)
+
+        # one-hot
+        c_trg = self.embedder(c_trg)
         
         # encoder_outputs = torch.cat((code_exp, c_trg.unsqueeze(1).expand(-1,x.size(1),-1)), dim=-1)
         encoder_outputs = torch.cat((code_exp, c_trg.unsqueeze(1).expand(-1,x.size(1),-1)), dim=-1)

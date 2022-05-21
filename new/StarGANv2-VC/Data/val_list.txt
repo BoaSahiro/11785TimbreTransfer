@@ -1,8 +1,0 @@
-/root/timbre/data_syn/cropped/organ_all_32.wav|7
-/root/timbre/data_syn/cropped/guitar_all_12.wav|3
-/root/timbre/data_syn/cropped/epiano_all_17.wav|1
-/root/timbre/data_syn/cropped/piano_all_15.wav|0
-/root/timbre/data_syn/cropped/viola_all_09.wav|2
-/root/timbre/data_syn/cropped/trumpet_all_37.wav|5
-/root/timbre/data_syn/cropped/flute_all_31.wav|4
-/root/timbre/data_syn/cropped/harp_all_04.wav|6

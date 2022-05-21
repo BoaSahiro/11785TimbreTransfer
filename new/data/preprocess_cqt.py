@@ -7,7 +7,7 @@ from concurrent.futures import ProcessPoolExecutor
 from glob import glob
 from tqdm import tqdm
 
-OUT_DIR = "/root/timbre/data_syn/cropped_cqt"
+OUT_DIR = "/root/timbre/data_syn/cropped"
 
 
 def transform(filepath):

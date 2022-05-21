@@ -2,7 +2,8 @@ from torch.utils import data
 import torch
 import numpy as np
 import pickle 
-import os    
+import os
+from random import choice
        
 from multiprocessing import Process, Manager   
 
@@ -20,14 +21,22 @@ class Utterances(data.Dataset):
 
         # load embeddings
         dataset = dict()
+        ins_index = 0
         for filename in os.listdir(self.emb_dir):
             if os.path.splitext(filename)[1] == '.npy':
-                filepath = os.path.join(self.emb_dir, filename)
+                # filepath = os.path.join(self.emb_dir, filename)
                 ins_name = filename.split('_')[0]
-                ins_emb = np.load(filepath)
-                # ins_emb = np.reshape(ins_emb, (-1))
-                ins_emb = ins_emb[10]
+                # ins_emb = np.load(filepath)
+                # # ins_emb = np.reshape(ins_emb, (-1))
+                # ins_emb = ins_emb[10]
+                # dataset[ins_name] = [ins_emb]
+                
+
+                # one-hot
+                ins_emb = ins_index
+                ins_index += 1
                 dataset[ins_name] = [ins_emb]
+
         # load spectrograms
         for filename in os.listdir(self.root_dir):
             if os.path.splitext(filename)[1] == '.npy':
@@ -66,8 +75,14 @@ class Utterances(data.Dataset):
             uttr = tmp[left:left+self.len_crop, :]
         else:
             uttr = tmp
+
+        # pick random target
+        emb_trg = dataset[choice(list_ins)][0]
+
+        # # random scale the amplitude
+        # uttr *= (np.random.random() * 0.2 + 0.8)
         
-        return uttr, emb_org
+        return uttr, emb_org, emb_trg
     
 
     def __len__(self):
